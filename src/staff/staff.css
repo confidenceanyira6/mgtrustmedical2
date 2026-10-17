@@ -1,0 +1,24 @@
+.stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.stat { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px; cursor: pointer; }
+.stat b { display: block; font-size: 22px; color: var(--blue-dark); }
+.stat span { font-size: 12px; color: var(--muted); }
+.stat.alert b { color: var(--red); }
+.picked { display: flex; justify-content: space-between; align-items: center; background: #eff5ff; border: 1px solid #cfe0ff; border-radius: 10px; padding: 8px 12px; }
+.cart-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.cart-row:last-child { border-bottom: 0; }
+.qty { display: flex; align-items: center; gap: 8px; }
+.qty button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: #fff; font-size: 17px; cursor: pointer; }
+.qty button:disabled { opacity: .4; }
+.total-bar { display: flex; justify-content: space-between; font-weight: 800; font-size: 16px; padding: 6px 2px; }
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.field label { font-size: 13px; font-weight: 600; }
+.field .unit { font-weight: 400; color: var(--muted); }
+.check { display: flex; gap: 8px; align-items: center; font-weight: 400 !important; }
+.danger-bg { background: var(--red); border-color: var(--red); }
+.chart { width: 100%; height: auto; }
+.chart text { font-size: 9px; fill: #6b7a99; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tile-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px 6px; }
+.tile-grid button { background: none; border: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 10.5px; text-align: center; cursor: pointer; line-height: 1.2; }
+.tile-grid button span { width: 50px; height: 50px; border-radius: 14px; background: #fff; border: 1px solid var(--line); display: grid; place-items: center; color: var(--blue); }
+.mini-list .row { cursor: default; padding: 9px 14px; }
