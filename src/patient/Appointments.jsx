@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { CalendarCheck, CheckCircle2, Clock } from 'lucide-react'
+import { CalendarCheck, CheckCircle2, Clock, Navigation } from 'lucide-react'
 import { useAuth } from '../auth'
 import { rpc } from '../supabase'
+import { mapsLink } from '../branch'
 import { Shell, useLoad, Loader, Kv, Pill, Segmented, Sheet, SlotPicker, fmtDate, fmtTime, patientNav } from '../ui'
 
 function bucket(a) {
@@ -29,7 +30,7 @@ export function MyAppointments() {
               <div className="row-main">
                 <div className="row-title">{a.reference}</div>
                 <div className="row-sub">{a.tests.map((t) => t.name).join(', ') || 'Laboratory test'}</div>
-                <div className="row-sub">{a.slot_start ? `${fmtDate(a.slot_start)}, ${fmtTime(a.slot_start)}` : 'No time slot'}</div>
+                <div className="row-sub">{a.slot_start ? `${fmtDate(a.slot_start)}, ${fmtTime(a.slot_start)}` : 'No time slot'}{a.branch ? ` · ${a.branch.name}` : ''}</div>
               </div>
               <Pill status={a.status} />
             </div>
@@ -80,12 +81,16 @@ export function AppointmentDetail() {
           </div>
           <div className="card">
             <Kv k="Reference" v={a.reference} />
+            {a.branch && <Kv k="Branch" v={a.branch.name} />}
+            {a.branch && <Kv k="Address" v={[a.branch.address, a.branch.city].filter(Boolean).join(', ')} />}
+            {a.branch?.phone && <Kv k="Branch phone" v={a.branch.phone} />}
             <Kv k="Test" v={a.tests.map((t) => t.name).join(', ') || '—'} />
             <Kv k="Date" v={a.slot_start ? fmtDate(a.slot_start) : '—'} />
             <Kv k="Time" v={a.slot_start ? fmtTime(a.slot_start) : '—'} />
             <Kv k="Submission" v={a.submission_method === 'remote' ? 'Remote' : 'Visit laboratory'} />
             {a.patient_note && <Kv k="Your note" v={a.patient_note} />}
           </div>
+          {a.branch && <a className="btn btn-outline" href={mapsLink(a.branch)} target="_blank" rel="noreferrer"><Navigation size={16} /> Get directions</a>}
           {a.samples.length > 0 && (
             <div className="card">
               <div className="card-title">Samples</div>

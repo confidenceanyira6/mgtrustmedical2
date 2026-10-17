@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom'
-import { Bell, CalendarDays, FileText, FlaskConical, MessageSquare, TestTube } from 'lucide-react'
+import { Bell, CalendarDays, FileText, FlaskConical, MapPin, MessageSquare, TestTube } from 'lucide-react'
 import { useAuth } from '../auth'
 import { rpc } from '../supabase'
+import { useBranch } from '../branch'
 import { Shell, useLoad, fmtDT, patientNav, LogoMark } from '../ui'
 
 const ACTIVE = ['pending_confirmation', 'confirmed', 'rescheduled', 'checked_in']
@@ -9,6 +10,7 @@ const ACTIVE = ['pending_confirmation', 'confirmed', 'rescheduled', 'checked_in'
 export default function PatientHome() {
   const navigate = useNavigate()
   const { profile } = useAuth()
+  const { selected, branches, loading: bl } = useBranch()
   const appts = useLoad(() => rpc('get_my_appointments'))
   const tests = useLoad(() => rpc('get_my_tests'))
 
@@ -42,6 +44,13 @@ export default function PatientHome() {
 
   return (
     <Shell header={header} nav={patientNav}>
+      <div className="card info" onClick={() => navigate('/branches')}>
+        <MapPin size={20} className="blue" />
+        <div>
+          <div className="row-title">{selected ? selected.name : 'Choose a branch'}</div>
+          <div className="row-sub">{bl ? 'Loading…' : selected ? [selected.address, selected.city].filter(Boolean).join(', ') : branches.length ? 'Pick where you want to book your test' : 'No branch is open for booking yet'}</div>
+        </div>
+      </div>
       <div className="info-cards">
         <div className="card info" onClick={() => navigate('/appointments')}>
           <CalendarDays size={20} className="blue" />
