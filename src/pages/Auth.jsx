@@ -57,7 +57,7 @@ export function PendingApproval() {
       <Brand size={56} tagline={false} />
       <div className="card">
         <div className="card-title">Account awaiting approval</div>
-        <p className="muted">Your staff account has been created but has not been activated yet. Ask an administrator to activate it, then log in again.</p>
+        <p className="muted">Your M.G Trust Medical staff account has been created but has not been approved yet. An administrator will activate it and assign your role and branch. Log in again once you've been approved.</p>
       </div>
       <button type="button" className="btn btn-outline" onClick={signOut}>Log out</button>
     </Frame>
@@ -71,7 +71,7 @@ export function UnknownAccount() {
       <Brand size={56} tagline={false} />
       <div className="card">
         <div className="card-title">Account not set up</div>
-        <p className="muted">This login isn't linked to a patient or staff profile. Please contact the centre.</p>
+        <p className="muted">This login isn't linked to a customer or staff profile. Please contact the centre.</p>
       </div>
       <button type="button" className="btn btn-outline" onClick={signOut}>Log out</button>
     </Frame>
@@ -119,7 +119,7 @@ function Login({ go }) {
       <Brand size={56} tagline={false} />
       <form className="login-form" onSubmit={submit}>
         <h2 className="auth-title">Welcome Back</h2>
-        <p className="muted center">Login to your account</p>
+        <p className="muted center">Login to your account — customers and M.G Trust Medical staff</p>
         <input className="input" type="email" placeholder="Email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <Password value={pw} onChange={setPw} autoComplete="current-password" />
         <button type="button" className="link-btn right" onClick={() => go('forgot')}>Forgot Password?</button>
@@ -130,7 +130,7 @@ function Login({ go }) {
   )
 }
 
-function Signup({ go }) {
+function CustomerSignup({ go, back }) {
   const { signUp, toast } = useAuth()
   const [f, setF] = useState({ full_name: '', phone: '', email: '', sex: '', date_of_birth: '', password: '', confirm: '' })
   const [busy, setBusy] = useState(false)
@@ -145,17 +145,17 @@ function Signup({ go }) {
     setBusy(true)
     try {
       const { needsConfirm } = await signUp({
-        email: f.email, password: f.password, full_name: f.full_name.trim(), phone: f.phone.trim(),
+        email: f.email, password: f.password, account_type: 'patient', full_name: f.full_name.trim(), phone: f.phone.trim(),
         sex: f.sex || undefined, date_of_birth: f.date_of_birth || undefined,
       })
       if (needsConfirm) { toast('Check your email to confirm your account, then log in'); go('login') }
     } catch (err) { toast(err.message) } finally { setBusy(false) }
   }
   return (
-    <Frame onBack={() => go('login')}>
+    <Frame onBack={back}>
       <Brand size={48} tagline={false} />
       <form className="login-form" onSubmit={submit}>
-        <h2 className="auth-title">Create Account</h2>
+        <h2 className="auth-title">Create Customer Account</h2>
         <input className="input" placeholder="Full Name" autoComplete="name" value={f.full_name} onChange={(e) => set('full_name')(e.target.value)} />
         <input className="input" type="tel" placeholder="Phone Number" autoComplete="tel" value={f.phone} onChange={(e) => set('phone')(e.target.value)} />
         <input className="input" type="email" placeholder="Email Address" autoComplete="email" value={f.email} onChange={(e) => set('email')(e.target.value)} />
@@ -171,6 +171,60 @@ function Signup({ go }) {
         <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create Account'}</button>
         <p className="muted center">Already have an account? <button type="button" className="link-btn inline" onClick={() => go('login')}>Login</button></p>
       </form>
+    </Frame>
+  )
+}
+
+function StaffSignup({ go, back }) {
+  const { signUp, toast } = useAuth()
+  const [f, setF] = useState({ full_name: '', phone: '', email: '', password: '', confirm: '' })
+  const [busy, setBusy] = useState(false)
+  const set = (k) => (v) => setF((s) => ({ ...s, [k]: v }))
+  const submit = async (e) => {
+    e.preventDefault()
+    if (f.full_name.trim().length < 2) return toast('Enter your full name')
+    if (!f.phone.trim()) return toast('Enter your phone number')
+    if (!f.email.trim()) return toast('Enter your work email')
+    if (f.password.length < 8) return toast('Use at least 8 characters for your password')
+    if (f.password !== f.confirm) return toast('Passwords do not match')
+    setBusy(true)
+    try {
+      const { needsConfirm } = await signUp({ email: f.email, password: f.password, account_type: 'staff', full_name: f.full_name.trim(), phone: f.phone.trim() })
+      if (needsConfirm) { toast('Check your email to confirm your account. An administrator must then approve it.'); go('login') }
+    } catch (err) { toast(err.message) } finally { setBusy(false) }
+  }
+  return (
+    <Frame onBack={back}>
+      <Brand size={48} tagline={false} />
+      <form className="login-form" onSubmit={submit}>
+        <h2 className="auth-title">M.G Trust Medical Staff Account</h2>
+        <p className="muted center">For branch teams. An administrator must approve your account and assign your role and branch before you can sign in.</p>
+        <input className="input" placeholder="Full Name" autoComplete="name" value={f.full_name} onChange={(e) => set('full_name')(e.target.value)} />
+        <input className="input" type="tel" placeholder="Phone Number" autoComplete="tel" value={f.phone} onChange={(e) => set('phone')(e.target.value)} />
+        <input className="input" type="email" placeholder="Work Email" autoComplete="email" value={f.email} onChange={(e) => set('email')(e.target.value)} />
+        <Password value={f.password} onChange={set('password')} autoComplete="new-password" />
+        <Password value={f.confirm} onChange={set('confirm')} placeholder="Confirm Password" autoComplete="new-password" />
+        <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Creating…' : 'Request Staff Account'}</button>
+        <p className="muted center">Already have an account? <button type="button" className="link-btn inline" onClick={() => go('login')}>Login</button></p>
+      </form>
+    </Frame>
+  )
+}
+
+function SignupChoice({ go }) {
+  const [type, setType] = useState(null)
+  if (type === 'customer') return <CustomerSignup go={go} back={() => setType(null)} />
+  if (type === 'staff') return <StaffSignup go={go} back={() => setType(null)} />
+  return (
+    <Frame onBack={() => go('login')}>
+      <Brand size={48} tagline={false} />
+      <div className="login-form">
+        <h2 className="auth-title">Create an account</h2>
+        <p className="muted center">Who is signing up?</p>
+        <button type="button" className="choice" onClick={() => setType('customer')}><b>Customer</b><span>Book lab tests at a branch, track your samples and view your results.</span></button>
+        <button type="button" className="choice" onClick={() => setType('staff')}><b>M.G Trust Medical branch</b><span>For centre and branch staff. An administrator approves your account and assigns your role.</span></button>
+        <p className="muted center">Already have an account? <button type="button" className="link-btn inline" onClick={() => go('login')}>Login</button></p>
+      </div>
     </Frame>
   )
 }
@@ -220,7 +274,7 @@ export default function AuthFlow() {
       </Frame>
     )
   }
-  if (view === 'signup') return <Signup go={go} />
+  if (view === 'signup') return <SignupChoice go={go} />
   if (view === 'forgot') return <Forgot go={go} />
   return <Login go={go} />
 }

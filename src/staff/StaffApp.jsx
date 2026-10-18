@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import './staff.css'
 import { StaffHome, More } from './Home'
+import { AdminDashboard } from './AdminDashboard'
 import { Patients } from './Patients'
 import { Branches, TestsAndPrices } from './Catalogue'
 import { Billing, NewBill, ReceiptView } from './Billing'
@@ -10,11 +11,17 @@ import { Appointments } from './Appointments'
 import { Reports } from './Reports'
 import { Inbox, StaffThread, Originals } from './Inbox'
 import { Users, Audit, Expenses, SettingsPage } from './Admin'
+import { useRole } from './common'
+
+function HomeSwitch() {
+  const { isAdmin } = useRole()
+  return isAdmin ? <AdminDashboard /> : <StaffHome />
+}
 
 export default function StaffApp() {
   return (
     <Routes>
-      <Route path="/" element={<StaffHome />} />
+      <Route path="/" element={<HomeSwitch />} />
       <Route path="/more" element={<More />} />
       <Route path="/patients" element={<Patients />} />
       <Route path="/branches" element={<Branches />} />

@@ -4,3 +4,10 @@
 .banner { background: #eff5ff; border: 1px solid #cfe0ff; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
 .banner b { color: var(--blue-dark); }
 .sticky-save { position: sticky; bottom: 76px; z-index: 4; }
+.choice { text-align: left; background: #fff; border: 1.5px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; width: 100%; }
+.choice b { font-size: 16px; color: var(--blue-dark); }
+.choice span { font-size: 13px; color: var(--muted); line-height: 1.4; }
+.choice:active, .choice:hover { border-color: var(--blue); background: #f5f9ff; }
+.step { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.step:last-child { border-bottom: 0; }
+.step svg { flex: none; margin-top: 2px; }
