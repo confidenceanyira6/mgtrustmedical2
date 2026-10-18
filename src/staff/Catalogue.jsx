@@ -1,10 +1,10 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Navigation, Plus } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Navigation, Plus, Search } from 'lucide-react'
 import { useAuth } from '../auth'
 import { supabase, query } from '../supabase'
 import { mapsLink } from '../branch'
-import { useLoad, Loader, Sheet } from '../ui'
+import { useLoad, Loader, Segmented, Sheet, naira } from '../ui'
 import { SShell, useRole } from './common'
 
 const blank = { name: '', address: '', city: '', state: '', phone: '', email: '', latitude: '', longitude: '', is_active: true }

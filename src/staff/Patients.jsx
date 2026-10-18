@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search } from 'lucide-react'
 import { useAuth } from '../auth'
-import { supabase, rpc, query } from '../supabase'
-import { useLoad, Loader, Sheet, naira, fmtDate } from '../ui'
+import { rpc } from '../supabase'
+import { useLoad, Loader, Sheet, fmtDate } from '../ui'
 import { SShell, useRole, useDebounced } from './common'
 
 export function Patients() {
@@ -56,70 +56,6 @@ export function Patients() {
           <label>Address</label><input className="input" value={f.address} onChange={(e) => setF({ ...f, address: e.target.value })} />
           {force && <p className="muted">A similar patient already exists. Tap Register again only if this is a different person.</p>}
           <button type="button" className="btn btn-primary" disabled={busy} onClick={save}>Register</button>
-        </div>
-      </Sheet>
-    </SShell>
-  )
-}
-
-export function Services() {
-  const { toast } = useAuth()
-  const { isAdmin } = useRole()
-  const { data, loading, error, reload } = useLoad(() => query(supabase.from('services').select('id,name,price,is_active,lab_category,patient_bookable,category_id,service_categories(name)').order('name')))
-  const cats = useLoad(() => query(supabase.from('service_categories').select('id,name,is_laboratory').order('id')))
-  const [q, setQ] = useState('')
-  const [cat, setCat] = useState('All')
-  const [edit, setEdit] = useState(null)
-  const [price, setPrice] = useState('')
-  const [active, setActive] = useState(true)
-  const [add, setAdd] = useState(false)
-  const [n, setN] = useState({ name: '', category_id: '3', price: '' })
-  const label = (s) => s.lab_category || s.service_categories?.name || 'Other'
-  const groups = ['All', ...new Set((data || []).map(label))]
-  const list = (data || []).filter((s) => (cat === 'All' || label(s) === cat) && s.name.toLowerCase().includes(q.trim().toLowerCase()))
-
-  const save = async () => {
-    const p = Number(price)
-    if (!(p >= 0)) return toast('Enter a valid price')
-    try { await query(supabase.from('services').update({ price: p, is_active: active }).eq('id', edit.id)); toast('Saved'); setEdit(null); reload() } catch (e) { toast(e.message) }
-  }
-  const create = async () => {
-    if (!n.name.trim() || !(Number(n.price) >= 0)) return toast('Enter a name and price')
-    const isLab = (cats.data || []).find((c) => String(c.id) === n.category_id)?.is_laboratory
-    try {
-      await query(supabase.from('services').insert({ name: n.name.trim(), category_id: Number(n.category_id), price: Number(n.price), is_active: true, patient_bookable: false, submission_methods: ['visit'], ...(isLab ? { lab_category: 'Other' } : {}) }))
-      toast('Service added'); setAdd(false); setN({ name: '', category_id: '3', price: '' }); reload()
-    } catch (e) { toast(e.message) }
-  }
-  return (
-    <SShell title="Tests & Prices" back={false} right={isAdmin && <button type="button" className="icon-btn blue" onClick={() => setAdd(true)} aria-label="Add service"><Plus size={22} /></button>}>
-      <div className="search"><Search size={16} /><input placeholder="Search tests and services…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
-      <div className="chips">{groups.map((g) => <button type="button" key={g} className={g === cat ? 'active' : ''} onClick={() => setCat(g)}>{g}</button>)}</div>
-      <Loader loading={loading} error={error} reload={reload} />
-      {data && (
-        <div className="list">
-          {list.map((s) => (
-            <div className="row" key={s.id} onClick={() => isAdmin && (setEdit(s), setPrice(String(s.price)), setActive(s.is_active))}>
-              <div className="row-main"><div className="row-title">{s.name}</div><div className="row-sub">{label(s)}{s.is_active ? '' : ' · Inactive'}{Number(s.price) === 0 ? ' · Price not set' : ''}</div></div>
-              <b>{naira(s.price)}</b>
-            </div>
-          ))}
-        </div>
-      )}
-      {isAdmin && <p className="muted center">Tap a test to change its price. Prices shown are starting values; set them to your own rates.</p>}
-      <Sheet open={!!edit} title={edit?.name || ''} onClose={() => setEdit(null)}>
-        <div className="form">
-          <label>Price (₦)</label><input className="input" type="number" min="0" value={price} onChange={(e) => setPrice(e.target.value)} />
-          <label className="check"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> Active (available for billing)</label>
-          <button type="button" className="btn btn-primary" onClick={save}>Save</button>
-        </div>
-      </Sheet>
-      <Sheet open={add} title="Add service" onClose={() => setAdd(false)}>
-        <div className="form">
-          <label>Name</label><input className="input" value={n.name} onChange={(e) => setN({ ...n, name: e.target.value })} />
-          <label>Category</label><select className="input" value={n.category_id} onChange={(e) => setN({ ...n, category_id: e.target.value })}>{(cats.data || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-          <label>Price (₦)</label><input className="input" type="number" min="0" value={n.price} onChange={(e) => setN({ ...n, price: e.target.value })} />
-          <button type="button" className="btn btn-primary" onClick={create}>Add service</button>
         </div>
       </Sheet>
     </SShell>

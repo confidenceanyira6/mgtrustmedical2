@@ -1,7 +1,8 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import './staff.css'
 import { StaffHome, More } from './Home'
-import { Patients, Services } from './Patients'
+import { Patients } from './Patients'
+import { Branches, TestsAndPrices } from './Catalogue'
 import { Billing, NewBill, ReceiptView } from './Billing'
 import { Sales, Products } from './Sales'
 import { Lab, LabItem } from './Lab'
@@ -16,7 +17,8 @@ export default function StaffApp() {
       <Route path="/" element={<StaffHome />} />
       <Route path="/more" element={<More />} />
       <Route path="/patients" element={<Patients />} />
-      <Route path="/services" element={<Services />} />
+      <Route path="/branches" element={<Branches />} />
+      <Route path="/services" element={<TestsAndPrices />} />
       <Route path="/billing" element={<Billing />} />
       <Route path="/billing/new" element={<NewBill />} />
       <Route path="/receipt/:type/:id" element={<ReceiptView />} />
