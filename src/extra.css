@@ -1,0 +1,6 @@
+.card.branch.sel { border-color: var(--blue); background: #f5f9ff; }
+.branch .row-sub svg { vertical-align: -2px; }
+.field-row { display: grid; grid-template-columns: 1fr; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; background: #fafcff; }
+.banner { background: #eff5ff; border: 1px solid #cfe0ff; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.banner b { color: var(--blue-dark); }
+.sticky-save { position: sticky; bottom: 76px; z-index: 4; }
