@@ -7,7 +7,8 @@ import { SShell, ROLES } from './common'
 
 export function Users() {
   const { profile, toast } = useAuth()
-  const { data, loading, error, reload } = useLoad(() => query(supabase.from('staff_profiles').select('id,full_name,email,role,is_active,created_at').order('created_at')))
+  const { data, loading, error, reload } = useLoad(() => query(supabase.from('staff_profiles').select('id,full_name,email,role,is_active,branch_id,created_at').order('created_at')))
+  const branches = useLoad(() => query(supabase.from('branches').select('id,name').order('name')))
   const upd = async (id, patch, msg) => { try { await query(supabase.from('staff_profiles').update(patch).eq('id', id)); toast(msg); reload() } catch (e) { toast(e.message) } }
   return (
     <SShell title="User Management" back={false}>
@@ -20,14 +21,15 @@ export function Users() {
               <div className="cart-row" key={u.id} style={{ flexWrap: 'wrap' }}>
                 <div className="row-main"><div className="row-title">{u.full_name || u.email}{me ? ' (you)' : ''}</div><div className="row-sub">{u.email}</div></div>
                 <span className={`pill ${u.is_active ? 'ok' : 'warn'}`}>{u.is_active ? 'Active' : 'Pending'}</span>
-                <select className="input" style={{ height: 36, maxWidth: 160 }} value={u.role} disabled={me} onChange={(e) => upd(u.id, { role: e.target.value }, 'Role updated')}>{Object.entries(ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+                <select className="input" style={{ height: 36, maxWidth: 150 }} value={u.role} disabled={me} onChange={(e) => upd(u.id, { role: e.target.value }, 'Role updated')}>{Object.entries(ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+                <select className="input" style={{ height: 36, maxWidth: 150 }} value={u.branch_id || ''} onChange={(e) => upd(u.id, { branch_id: e.target.value || null }, 'Branch updated')}><option value="">All branches</option>{(branches.data || []).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select>
                 {!me && <button type="button" className="btn-view" onClick={() => upd(u.id, { is_active: !u.is_active }, u.is_active ? 'Deactivated' : 'Activated')}>{u.is_active ? 'Deactivate' : 'Activate'}</button>}
               </div>
             )
           })}
         </div>
       )}
-      <p className="muted">To add a staff member, create their login in Supabase (Authentication → Users → Add user), then activate them here and choose their role.</p>
+      <p className="muted">To add a staff member, create their login in Supabase (Authentication → Users → Add user), then activate them here, choose their role and assign their branch.</p>
     </SShell>
   )
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Plus, Printer } from 'lucide-react'
 import { useAuth } from '../auth'
@@ -38,60 +38,88 @@ export function Billing() {
 export function NewBill() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { toast } = useAuth()
+  const { profile, toast } = useAuth()
+  const { isAdmin } = useRole()
   const [patient, setPatient] = useState(location.state?.patient || null)
+  const [branchId, setBranchId] = useState(profile.branch_id || '')
   const [cart, setCart] = useState([])
   const [q, setQ] = useState('')
   const [method, setMethod] = useState('cash')
   const [paidInput, setPaidInput] = useState('')
   const [busy, setBusy] = useState(false)
-  const svc = useLoad(() => query(supabase.from('services').select('id,name,price,lab_category').eq('is_active', true).gt('price', 0).order('name')))
+  const branches = useLoad(() => query(supabase.from('branches').select('id,name').eq('is_active', true).order('name')))
+  const svc = useLoad(() => (branchId ? query(supabase.from('branch_services').select('service_id,price,services(id,name,lab_category)').eq('branch_id', branchId).eq('is_available', true)) : Promise.resolve([])), [branchId])
 
+  useEffect(() => {
+    if (!branchId && branches.data?.length === 1) setBranchId(branches.data[0].id)
+  }, [branches.data, branchId])
+
+  const items = (svc.data || []).map((r) => ({ id: r.service_id, name: r.services?.name || '', price: Number(r.price), cat: r.services?.lab_category }))
   const total = cart.reduce((s, c) => s + c.price * c.qty, 0)
   const paid = paidInput === '' ? total : Number(paidInput)
-  const matches = q.trim() ? (svc.data || []).filter((s) => s.name.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 25) : []
-  const add = (s) => { setCart((c) => (c.some((x) => x.id === s.id) ? c.map((x) => (x.id === s.id ? { ...x, qty: x.qty + 1 } : x)) : [...c, { id: s.id, name: s.name, price: Number(s.price), qty: 1 }])); setQ('') }
+  const matches = q.trim() ? items.filter((s) => s.name.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 25) : []
+  const add = (s) => { setCart((c) => (c.some((x) => x.id === s.id) ? c.map((x) => (x.id === s.id ? { ...x, qty: x.qty + 1 } : x)) : [...c, { id: s.id, name: s.name, price: s.price, qty: 1 }])); setQ('') }
   const setQty = (id, d) => setCart((c) => c.map((x) => (x.id === id ? { ...x, qty: x.qty + d } : x)).filter((x) => x.qty > 0))
+  const changeBranch = (id) => { setBranchId(id); setCart([]) }
 
   const submit = async () => {
+    if (!branchId) return toast('Choose the branch')
     if (!cart.length) return toast('Add at least one service')
     if (!(paid >= 0) || paid > total) return toast(`Amount paid must be between 0 and ${naira(total)}`)
     setBusy(true)
     try {
-      const r = await rpc('create_service_bill', { p_patient_id: patient?.id || null, p_visit_id: null, p_payment_method: method, p_items: cart.map((c) => ({ service_id: c.id, quantity: c.qty })), p_amount_paid: paid })
+      const r = await rpc('create_service_bill', { p_patient_id: patient?.id || null, p_visit_id: null, p_payment_method: method, p_items: cart.map((c) => ({ service_id: c.id, quantity: c.qty })), p_amount_paid: paid, p_branch: branchId })
       navigate(`/receipt/bill/${r.id}`, { replace: true })
     } catch (e) { toast(e.message); setBusy(false) }
   }
 
   return (
     <SShell title="New Bill">
-      <div className="card-title">Patient (optional)</div>
-      <PatientPicker value={patient} onChange={setPatient} />
-      <div className="card-title">Add service or test</div>
-      <div className="search"><input placeholder="Search services, e.g. malaria, pregnancy…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
-      <Loader loading={svc.loading} error={svc.error} reload={svc.reload} />
-      {matches.length > 0 && (
-        <div className="list">{matches.map((s) => (
-          <div className="row" key={s.id} onClick={() => add(s)}><div className="row-main"><div className="row-title">{s.name}</div><div className="row-sub">{s.lab_category || 'Service'}</div></div><b>{naira(s.price)}</b></div>
-        ))}</div>
+      <Loader loading={branches.loading} error={branches.error} reload={branches.reload} />
+      {branches.data && !branches.data.length && (
+        <div className="banner"><b>No branch has been set up</b><span className="muted">An administrator needs to register a branch and list its tests and prices before bills can be created.</span></div>
       )}
-      {cart.length > 0 && (
+      {branches.data?.length > 0 && (
         <>
-          <div className="list">{cart.map((c) => (
-            <div className="cart-row" key={c.id}>
-              <div className="row-main"><div className="row-title">{c.name}</div><div className="row-sub">{naira(c.price)} each</div></div>
-              <div className="qty"><button type="button" onClick={() => setQty(c.id, -1)}>−</button><b>{c.qty}</b><button type="button" onClick={() => setQty(c.id, 1)}>+</button></div>
-            </div>
-          ))}</div>
-          <div className="total-bar"><span>Total</span><span>{naira(total)}</span></div>
-          <div className="form">
-            <label>Payment method</label>
-            <select className="input" value={method} onChange={(e) => setMethod(e.target.value)}>{METHODS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
-            <label>Amount paid now (leave blank to pay in full)</label>
-            <input className="input" type="number" min="0" max={total} placeholder={String(total)} value={paidInput} onChange={(e) => setPaidInput(e.target.value)} />
-            {paid < total && <p className="muted">Balance of {naira(total - paid)} will stay outstanding.</p>}
-            <button type="button" className="btn btn-primary" disabled={busy} onClick={submit}>{busy ? 'Saving…' : 'Create Bill & Receipt'}</button>
-          </div>
+          <div className="card-title">Branch</div>
+          <select className="input" value={branchId} disabled={Boolean(profile.branch_id) && !isAdmin} onChange={(e) => changeBranch(e.target.value)}>
+            <option value="">Choose branch…</option>
+            {branches.data.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+          <div className="card-title">Patient (optional)</div>
+          <PatientPicker value={patient} onChange={setPatient} />
+          {branchId && (
+            <>
+              <div className="card-title">Add service or test</div>
+              <div className="search"><input placeholder="Search this branch's tests and services…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+              <Loader loading={svc.loading} error={svc.error} reload={svc.reload} />
+              {svc.data && !svc.data.length && <div className="empty">This branch has not listed any tests or prices yet.</div>}
+              {matches.length > 0 && (
+                <div className="list">{matches.map((s) => (
+                  <div className="row" key={s.id} onClick={() => add(s)}><div className="row-main"><div className="row-title">{s.name}</div><div className="row-sub">{s.cat || 'Service'}</div></div><b>{naira(s.price)}</b></div>
+                ))}</div>
+              )}
+            </>
+          )}
+          {cart.length > 0 && (
+            <>
+              <div className="list">{cart.map((c) => (
+                <div className="cart-row" key={c.id}>
+                  <div className="row-main"><div className="row-title">{c.name}</div><div className="row-sub">{naira(c.price)} each</div></div>
+                  <div className="qty"><button type="button" onClick={() => setQty(c.id, -1)}>−</button><b>{c.qty}</b><button type="button" onClick={() => setQty(c.id, 1)}>+</button></div>
+                </div>
+              ))}</div>
+              <div className="total-bar"><span>Total</span><span>{naira(total)}</span></div>
+              <div className="form">
+                <label>Payment method</label>
+                <select className="input" value={method} onChange={(e) => setMethod(e.target.value)}>{METHODS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+                <label>Amount paid now (leave blank to pay in full)</label>
+                <input className="input" type="number" min="0" max={total} placeholder={String(total)} value={paidInput} onChange={(e) => setPaidInput(e.target.value)} />
+                {paid < total && <p className="muted">Balance of {naira(total - paid)} will stay outstanding.</p>}
+                <button type="button" className="btn btn-primary" disabled={busy} onClick={submit}>{busy ? 'Saving…' : 'Create Bill & Receipt'}</button>
+              </div>
+            </>
+          )}
         </>
       )}
     </SShell>
@@ -124,13 +152,19 @@ export function ReceiptView() {
     return act(() => rpc(type === 'bill' ? 'void_bill' : 'void_sale', type === 'bill' ? { p_bill: id, p_reason: reason.trim() } : { p_sale: id, p_reason: reason.trim() }), 'Voided', setVoidOpen)
   }
   const isVoid = r?.status === 'void'
+  const br = r?.branch
   return (
     <SShell title="Payment Receipt">
       <Loader loading={loading} error={error} reload={reload} />
       {r && (
         <>
           <div className="card rpt">
-            <div className="center"><div className="rpt-name">M.G TRUST MEDICAL</div><div className="muted">Health • Care • Trust</div></div>
+            <div className="center">
+              <div className="rpt-name">M.G TRUST MEDICAL</div>
+              <div className="muted">Health • Care • Trust</div>
+              {br && <div className="muted">{br.name}{br.address ? ` · ${br.address}` : ''}{br.city ? `, ${br.city}` : ''}</div>}
+              {br?.phone && <div className="muted">{br.phone}</div>}
+            </div>
             <div className="receipt-title">{isVoid ? 'VOID — ' : ''}Payment Receipt</div>
             <Kv k="Receipt No." v={r.code} />
             <Kv k="Date" v={fmtDT(r.issued_at)} />

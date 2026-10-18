@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../auth'
-import { rpc } from '../supabase'
+import { supabase, rpc, query } from '../supabase'
 import { useLoad, Loader, Kv, Pill, Sheet, SlotPicker, fmtDT, todayLagos } from '../ui'
 import { SShell, useRole } from './common'
 
@@ -8,12 +8,14 @@ const CHIPS = [['', 'All'], ['pending_confirmation', 'Pending'], ['confirmed', '
 const addDays = (s, n) => { const d = new Date(`${s}T12:00:00`); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10) }
 
 export function Appointments() {
-  const { toast } = useAuth()
+  const { profile, toast } = useAuth()
   const { front } = useRole()
   const [from, setFrom] = useState(todayLagos())
   const [to, setTo] = useState(addDays(todayLagos(), 14))
   const [status, setStatus] = useState('')
-  const list = useLoad(() => rpc('list_appointments', { p_from: from || null, p_to: to || null, p_status: status || null, p_service: null, p_limit: 200 }), [from, to, status])
+  const [branch, setBranch] = useState(profile.branch_id || '')
+  const branches = useLoad(() => query(supabase.from('branches').select('id,name').order('name')))
+  const list = useLoad(() => rpc('list_appointments', { p_from: from || null, p_to: to || null, p_status: status || null, p_service: null, p_limit: 200, p_branch: branch || null }), [from, to, status, branch])
   const [sel, setSel] = useState(null)
   const [note, setNote] = useState('')
   const [date, setDate] = useState('')
@@ -30,6 +32,9 @@ export function Appointments() {
   const upcoming = ['pending_confirmation', 'confirmed', 'rescheduled'].includes(st)
   return (
     <SShell title="Appointments" back={false}>
+      {(branches.data || []).length > 1 && (
+        <select className="input" value={branch} onChange={(e) => setBranch(e.target.value)}><option value="">All branches</option>{branches.data.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select>
+      )}
       <div className="two"><input className="input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /><input className="input" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
       <div className="chips">{CHIPS.map(([k, v]) => <button type="button" key={k} className={k === status ? 'active' : ''} onClick={() => setStatus(k)}>{v}</button>)}</div>
       <Loader loading={list.loading} error={list.error} reload={list.reload} />
@@ -40,7 +45,7 @@ export function Appointments() {
               <div className="row-main">
                 <div className="row-title">{a.patient_name}</div>
                 <div className="row-sub">{a.reference} · {(a.tests || []).join(', ') || 'No tests'}</div>
-                <div className="row-sub">{a.slot_start ? fmtDT(a.slot_start) : 'No time slot'}{a.reschedule_requested_at ? ' · Reschedule requested' : ''}</div>
+                <div className="row-sub">{a.slot_start ? fmtDT(a.slot_start) : 'No time slot'}{a.branch_name ? ` · ${a.branch_name}` : ''}{a.reschedule_requested_at ? ' · Reschedule requested' : ''}</div>
               </div>
               <Pill status={a.status} />
             </div>
@@ -53,6 +58,7 @@ export function Appointments() {
           <div className="form">
             <Kv k="Patient" v={`${sel.patient_name} (${sel.patient_code})`} />
             {sel.phone && <Kv k="Phone" v={sel.phone} />}
+            {sel.branch_name && <Kv k="Branch" v={sel.branch_name} />}
             <Kv k="Tests" v={(sel.tests || []).join(', ') || '—'} />
             <Kv k="Time" v={sel.slot_start ? fmtDT(sel.slot_start) : '—'} />
             <Kv k="Submission" v={sel.submission_method} />
