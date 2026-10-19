@@ -59,6 +59,8 @@ export function AuthProvider({ children }) {
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
     if (error) throw error
   }
+
+  // New accounts are verified automatically, so after signing up we simply sign the person in.
   const signUp = async ({ email, password, ...meta }) => {
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
@@ -66,7 +68,9 @@ export function AuthProvider({ children }) {
       options: { emailRedirectTo: base(), data: { account_type: 'patient', ...meta } },
     })
     if (error) throw error
-    return { needsConfirm: !data.session }
+    if (data.session) return { needsConfirm: false }
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+    return { needsConfirm: Boolean(signInError) }
   }
   const resetPassword = async (email) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: base() })
