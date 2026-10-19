@@ -56,12 +56,15 @@ const FLAGS = { high: 'High', low: 'Low', abnormal: 'Abnormal', critical: 'Criti
 
 export function LabItem() {
   const { id } = useParams()
-  const { toast } = useAuth()
-  const { enterResults, reviewer, lab, front } = useRole()
+  const navigate = useNavigate()
+  const { toast, profile } = useAuth()
+  const { enterResults, reviewer, lab, front, isAdmin } = useRole()
   const item = useLoad(() => rpc('get_lab_result', { p_id: id }), [id])
   const d = item.data
   const sample = useLoad(() => (d?.sample_number ? query(supabase.from('lab_samples').select('id,status').eq('sample_number', d.sample_number).maybeSingle()) : Promise.resolve(null)), [d?.sample_number])
   const report = useLoad(() => (['result_approved', 'report_released'].includes(d?.stage) ? query(supabase.from('lab_reports').select('id,status,report_number').eq('lab_result_id', id).maybeSingle()) : Promise.resolve(null)), [d?.stage, id])
+  const meta = useLoad(() => (d?.stage === 'awaiting_review' ? query(supabase.from('lab_results').select('submitted_by').eq('id', id).maybeSingle()) : Promise.resolve(null)), [d?.stage, id])
+  const wf = useLoad(() => query(supabase.from('app_settings').select('value').eq('key', 'lab_workflow').maybeSingle()))
   const [vals, setVals] = useState({})
   const [comment, setComment] = useState('')
   const [busy, setBusy] = useState(false)
@@ -85,6 +88,8 @@ export function LabItem() {
   const canEnter = enterResults && d && ['sample_accepted', 'processing'].includes(d.stage)
   const hasSample = Boolean(d?.sample_number)
   const sStatus = sample.data?.status
+  // The person who entered a result cannot approve it themselves (a second pair of eyes protects patients)
+  const selfBlocked = d?.stage === 'awaiting_review' && meta.data?.submitted_by === profile.id && !wf.data?.value?.allow_self_review
 
   return (
     <SShell title="Lab Test">
@@ -149,14 +154,24 @@ export function LabItem() {
             </div>
           )}
 
-          {d.stage === 'awaiting_review' && reviewer && (
+          {d.stage === 'awaiting_review' && !reviewer && <p className="muted center">Waiting for a lab reviewer to check and approve this result.</p>}
+          {d.stage === 'awaiting_review' && reviewer && (selfBlocked ? (
+            <div className="banner">
+              <b>A different person must approve this result</b>
+              <span className="muted">You entered these results, so you cannot approve or return them yourself. This second check stops unchecked results reaching patients. Ask another lab reviewer or administrator to open this test and approve it.</span>
+              {isAdmin && <span className="muted">If only one person runs the lab, you can allow self-approval under More → Settings → Workflow.</span>}
+            </div>
+          ) : (
             <div className="btn-row no-print">
               <button type="button" className="btn btn-outline danger" onClick={() => setSheet('return')}>Return</button>
               <button type="button" className="btn btn-primary" disabled={busy} onClick={() => act(() => rpc('review_result', { p_result: id, p_decision: 'approve', p_note: null }), 'Result approved')}>Approve</button>
             </div>
-          )}
+          ))}
           {report.data?.status === 'approved' && reviewer && <button type="button" className="btn btn-primary" disabled={busy} onClick={() => act(() => rpc('release_report', { p_report: report.data.id }), 'Report released to patient')}>Release report to patient</button>}
           {report.data?.status === 'released' && <p className="muted center">Report {report.data.report_number} has been released to the patient.</p>}
+          {report.data && ['approved', 'released'].includes(report.data.status) && (front || lab) && (
+            <button type="button" className="btn btn-outline" onClick={() => navigate(`/report/${report.data.id}`)}>View / print original copy</button>
+          )}
         </>
       )}
 

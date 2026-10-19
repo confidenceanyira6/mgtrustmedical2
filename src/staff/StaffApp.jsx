@@ -7,6 +7,7 @@ import { Branches, TestsAndPrices } from './Catalogue'
 import { Billing, NewBill, ReceiptView } from './Billing'
 import { Sales, Products } from './Sales'
 import { Lab, LabItem } from './Lab'
+import { ReportCopy } from './ReportCopy'
 import { Appointments } from './Appointments'
 import { Reports } from './Reports'
 import { Inbox, StaffThread, Originals } from './Inbox'
@@ -33,6 +34,7 @@ export default function StaffApp() {
       <Route path="/products" element={<Products />} />
       <Route path="/lab" element={<Lab />} />
       <Route path="/lab/:id" element={<LabItem />} />
+      <Route path="/report/:id" element={<ReportCopy />} />
       <Route path="/appointments" element={<Appointments />} />
       <Route path="/reports" element={<Reports />} />
       <Route path="/messages" element={<Inbox />} />

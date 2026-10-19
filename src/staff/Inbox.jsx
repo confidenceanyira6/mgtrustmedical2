@@ -60,8 +60,9 @@ export function StaffThread() {
 }
 
 export function Originals() {
+  const navigate = useNavigate()
   const { toast } = useAuth()
-  const { data, loading, error, reload } = useLoad(() => query(supabase.from('original_report_requests').select('id,collection_reference,status,patient_note,staff_note,estimated_collection_date,requested_at,patients(full_name,patient_code)').order('requested_at', { ascending: false }).limit(100)))
+  const { data, loading, error, reload } = useLoad(() => query(supabase.from('original_report_requests').select('id,report_id,collection_reference,status,patient_note,staff_note,estimated_collection_date,requested_at,patients(full_name,patient_code)').order('requested_at', { ascending: false }).limit(100)))
   const [sel, setSel] = useState(null)
   const [date, setDate] = useState('')
   const [note, setNote] = useState('')
@@ -90,6 +91,7 @@ export function Originals() {
             <Kv k="Status" v={String(sel.status).replace(/_/g, ' ')} />
             {sel.patient_note && <Kv k="Patient note" v={sel.patient_note} />}
             {sel.estimated_collection_date && <Kv k="Estimated" v={fmtDate(sel.estimated_collection_date)} />}
+            {sel.report_id && sel.status !== 'cancelled' && <button type="button" className="btn btn-outline" onClick={() => navigate(`/report/${sel.report_id}`)}>Open exact original copy to print</button>}
             {['submitted', 'preparing'].includes(sel.status) && (<>
               <label>Estimated collection date</label><input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
               <label>Note to patient (optional)</label><input className="input" value={note} onChange={(e) => setNote(e.target.value)} />
