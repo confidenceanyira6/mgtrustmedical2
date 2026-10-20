@@ -11,3 +11,11 @@
 .step { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
 .step:last-child { border-bottom: 0; }
 .step svg { flex: none; margin-top: 2px; }
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+.pl-wrap { overflow-x: auto; }
+.pl-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.pl-table th, .pl-table td { padding: 10px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+.pl-table th:first-child, .pl-table td:first-child { text-align: left; position: sticky; left: 0; background: #fff; }
+.pl-table th { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); background: #fafcff; }
+.pl-table tfoot td { font-weight: 700; border-bottom: 0; background: #fafcff; }
+.pl-tag { font-size: 10px; font-weight: 600; opacity: .85; }
