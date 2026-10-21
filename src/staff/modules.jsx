@@ -1,4 +1,4 @@
-import { BarChart3, Building2, CalendarDays, FileText, FlaskConical, MessageSquare, Package, Receipt, Settings, Shield, ShoppingCart, Stethoscope, UserCog, Users, Wallet } from 'lucide-react'
+import { BarChart3, Building2, CalendarDays, FileText, FlaskConical, MessageSquare, Package, Receipt, Settings, Shield, ShoppingCart, Stethoscope, TrendingUp, UserCog, Users, Wallet } from 'lucide-react'
 
 export const MODULES = [
   { to: '/patients', label: 'Patient Registration', Icon: Users, who: 'front' },
@@ -7,6 +7,7 @@ export const MODULES = [
   { to: '/lab', label: 'Service & Laboratory', Icon: FlaskConical, who: 'fl' },
   { to: '/sales', label: 'Sales', Icon: ShoppingCart, who: 'sales' },
   { to: '/products', label: 'Inventory', Icon: Package, who: 'sales' },
+  { to: '/profit', label: 'Profit & Loss', Icon: TrendingUp, who: 'admin' },
   { to: '/services', label: 'Tests & Prices', Icon: Stethoscope, who: 'all' },
   { to: '/branches', label: 'Branches', Icon: Building2, who: 'admin' },
   { to: '/reports', label: 'Reports & Analytics', Icon: BarChart3, who: 'all' },
