@@ -19,3 +19,7 @@
 .pl-table th { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); background: #fafcff; }
 .pl-table tfoot td { font-weight: 700; border-bottom: 0; background: #fafcff; }
 .pl-tag { font-size: 10px; font-weight: 600; opacity: .85; }
+.pl-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pl-box { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #fafcff; }
+.pl-box b { font-size: 20px; }
+.pl-box small { font-size: 11px; color: var(--muted); line-height: 1.3; }
