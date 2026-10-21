@@ -32,13 +32,9 @@ function PLCard({ title, r }) {
         <div style={{ fontSize: 28, fontWeight: 700, ...tone(r.net_profit) }}>{money(r.net_profit)}</div>
         <span className={`pill ${resultClass(r.result)}`}>{resultLabel(r.result)}</span>
       </div>
-      <Kv k="Service revenue" v={naira(r.service_revenue)} />
-      <Kv k="Product revenue" v={naira(r.product_revenue)} />
-      <Kv k="Total revenue" v={naira(r.total_revenue)} />
-      <Kv k="Cost of products sold" v={naira(r.product_cost)} />
-      <Kv k="Gross profit" v={money(r.gross_profit)} />
-      <Kv k="Expenses" v={naira(r.expenses)} />
-      <Kv k="Net profit / loss" v={money(r.net_profit)} />
+      <Kv k="Selling price total" v={naira(r.total_revenue)} />
+      <Kv k="Buying price total" v={naira(r.total_cost)} />
+      <Kv k="Profit (selling − buying)" v={money(r.net_profit)} />
     </div>
   )
 }
@@ -55,10 +51,9 @@ export function Profit() {
   const label = (r) => (view === 'Daily' ? fmtDate(`${r.from}T12:00:00Z`) : monthLabel(r.from))
   const totals = list.reduce((t, r) => ({
     total_revenue: t.total_revenue + Number(r.total_revenue),
-    product_cost: t.product_cost + Number(r.product_cost),
-    expenses: t.expenses + Number(r.expenses),
+    total_cost: t.total_cost + Number(r.total_cost),
     net_profit: t.net_profit + Number(r.net_profit),
-  }), { total_revenue: 0, product_cost: 0, expenses: 0, net_profit: 0 })
+  }), { total_revenue: 0, total_cost: 0, net_profit: 0 })
   return (
     <SShell title="Profit & Loss">
       <Loader loading={sum.loading} error={sum.error} reload={sum.reload} />
@@ -68,6 +63,7 @@ export function Profit() {
           <PLCard title={`This month · ${monthLabel(sum.data.this_month.from)}`} r={sum.data.this_month} />
         </>
       )}
+      <p className="muted center">Profit = selling price minus buying price. Set buying prices under Inventory (products) and Tests &amp; Prices (tests).</p>
       <div className="no-print"><Segmented options={['Daily', 'Monthly']} value={view} onChange={setView} /></div>
       {view === 'Daily' && (
         <div className="two no-print">
@@ -82,27 +78,26 @@ export function Profit() {
           <div className="card" style={{ padding: 0 }}>
             <div className="pl-wrap">
               <table className="pl-table">
-                <thead><tr><th>{view === 'Daily' ? 'Date' : 'Month'}</th><th>Revenue</th><th>Cost</th><th>Expenses</th><th>Profit / Loss</th></tr></thead>
+                <thead><tr><th>{view === 'Daily' ? 'Date' : 'Month'}</th><th>Selling</th><th>Buying</th><th>Profit / Loss</th></tr></thead>
                 <tbody>
                   {list.map((r) => (
                     <tr key={r.from}>
                       <td>{label(r)}</td>
                       <td>{naira(r.total_revenue)}</td>
-                      <td>{naira(r.product_cost)}</td>
-                      <td>{naira(r.expenses)}</td>
+                      <td>{naira(r.total_cost)}</td>
                       <td style={tone(r.net_profit)}><b>{money(r.net_profit)}</b><div className="pl-tag">{resultLabel(r.result)}</div></td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr><td>Total</td><td>{naira(totals.total_revenue)}</td><td>{naira(totals.product_cost)}</td><td>{naira(totals.expenses)}</td><td style={tone(totals.net_profit)}><b>{money(totals.net_profit)}</b></td></tr>
+                  <tr><td>Total</td><td>{naira(totals.total_revenue)}</td><td>{naira(totals.total_cost)}</td><td style={tone(totals.net_profit)}><b>{money(totals.net_profit)}</b></td></tr>
                 </tfoot>
               </table>
             </div>
           </div>
           <div className="btn-row no-print">
             <button type="button" className="btn btn-outline" onClick={() => window.print()}><Printer size={16} /> Print</button>
-            <button type="button" className="btn btn-outline" onClick={() => downloadCsv(`profit-loss-${view.toLowerCase()}.csv`, [[view === 'Daily' ? 'Date' : 'Month', 'Service revenue', 'Product revenue', 'Total revenue', 'Product cost', 'Expenses', 'Net profit/loss', 'Result'], ...list.map((r) => [r.from, r.service_revenue, r.product_revenue, r.total_revenue, r.product_cost, r.expenses, r.net_profit, resultLabel(r.result)])])}><Download size={16} /> CSV</button>
+            <button type="button" className="btn btn-outline" onClick={() => downloadCsv(`profit-${view.toLowerCase()}.csv`, [[view === 'Daily' ? 'Date' : 'Month', 'Selling total', 'Buying total', 'Profit/Loss', 'Result'], ...list.map((r) => [r.from, r.total_revenue, r.total_cost, r.net_profit, resultLabel(r.result)])])}><Download size={16} /> CSV</button>
           </div>
         </>
       ) : <div className="empty">No data for this period.</div>)}
