@@ -10,6 +10,7 @@ import { Lab, LabItem } from './Lab'
 import { ReportCopy } from './ReportCopy'
 import { Appointments } from './Appointments'
 import { Reports } from './Reports'
+import { Profit } from './Profit'
 import { Inbox, StaffThread, Originals } from './Inbox'
 import { Users, Audit, Expenses, SettingsPage } from './Admin'
 import { useRole } from './common'
@@ -32,6 +33,7 @@ export default function StaffApp() {
       <Route path="/receipt/:type/:id" element={<ReceiptView />} />
       <Route path="/sales" element={<Sales />} />
       <Route path="/products" element={<Products />} />
+      <Route path="/profit" element={<Profit />} />
       <Route path="/lab" element={<Lab />} />
       <Route path="/lab/:id" element={<LabItem />} />
       <Route path="/report/:id" element={<ReportCopy />} />
