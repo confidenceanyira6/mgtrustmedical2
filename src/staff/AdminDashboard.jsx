@@ -37,7 +37,7 @@ function ProfitCard() {
               <span className="muted">{label}</span>
               <b style={tone(r.net_profit)}>{money(r.net_profit)}</b>
               <span className={`pill ${resultClass(r.result)}`}>{resultLabel(r.result)}</span>
-              <small>Revenue {naira(r.total_revenue)} · Costs {naira(Number(r.product_cost) + Number(r.expenses))}</small>
+              <small>Selling {naira(r.total_revenue)} · Buying {naira(r.total_cost)}</small>
             </div>
           ))}
         </div>
@@ -48,13 +48,13 @@ function ProfitCard() {
       {rows.data && (
         <div className="pl-wrap">
           <table className="pl-table">
-            <thead><tr><th>{view === 'Daily' ? 'Date' : 'Month'}</th><th>Revenue</th><th>Costs</th><th>Profit / Loss</th></tr></thead>
+            <thead><tr><th>{view === 'Daily' ? 'Date' : 'Month'}</th><th>Selling</th><th>Buying</th><th>Profit / Loss</th></tr></thead>
             <tbody>
               {list.map((r) => (
                 <tr key={r.from}>
                   <td>{view === 'Daily' ? fmtDate(`${r.from}T12:00:00Z`) : monthLabel(r.from)}</td>
                   <td>{naira(r.total_revenue)}</td>
-                  <td>{naira(Number(r.product_cost) + Number(r.expenses))}</td>
+                  <td>{naira(r.total_cost)}</td>
                   <td style={tone(r.net_profit)}><b>{money(r.net_profit)}</b><div className="pl-tag">{resultLabel(r.result)}</div></td>
                 </tr>
               ))}
@@ -62,7 +62,7 @@ function ProfitCard() {
           </table>
         </div>
       )}
-      <button type="button" className="btn btn-outline" style={{ marginTop: 10 }} onClick={() => navigate('/reports')}>Full profit &amp; loss report</button>
+      <button type="button" className="btn btn-outline" style={{ marginTop: 10 }} onClick={() => navigate('/profit')}>Full profit &amp; loss report</button>
     </div>
   )
 }
