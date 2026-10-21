@@ -97,7 +97,7 @@ export function Branches() {
 
 const LAB_CATS = ['Haematology', 'Chemistry', 'Microbiology', 'Parasitology', 'Serology & Immunology', 'Hormones', 'Urinalysis', 'Pregnancy & Fertility', 'Tumour Markers', 'Other']
 const blankField = { label: '', type: 'numeric', unit: '', low: '', high: '', options: '' }
-const blankTest = { kind: '3', name: '', lab_category: 'Chemistry', sample_type: '', tat: '', remote: false, prep: '', desc: '', fields: [blankField] }
+const blankTest = { kind: '3', name: '', lab_category: 'Chemistry', sample_type: '', tat: '', cost: '', remote: false, prep: '', desc: '', fields: [blankField] }
 
 export function TestsAndPrices() {
   const { profile, toast } = useAuth()
@@ -105,7 +105,7 @@ export function TestsAndPrices() {
   const [params, setParams] = useSearchParams()
   const branches = useLoad(() => query(supabase.from('branches').select('id,name').eq('is_active', true).order('name')))
   const branchId = params.get('branch') || profile.branch_id || branches.data?.[0]?.id || ''
-  const master = useLoad(() => query(supabase.from('services').select('id,name,lab_category,turnaround_hours,service_categories(name)').eq('is_active', true).order('name')))
+  const master = useLoad(() => query(supabase.from('services').select('id,name,lab_category,turnaround_hours,cost_price,service_categories(name)').eq('is_active', true).order('name')))
   const rows = useLoad(() => (branchId ? query(supabase.from('branch_services').select('service_id,price,is_available').eq('branch_id', branchId)) : Promise.resolve([])), [branchId])
   const [edits, setEdits] = useState({})
   const [q, setQ] = useState('')
@@ -168,7 +168,9 @@ export function TestsAndPrices() {
   const saveTat = async () => {
     const h = tat.hours === '' ? null : Number(tat.hours)
     if (h !== null && !(h > 0)) return toast('Enter a number of hours')
-    try { await query(supabase.from('services').update({ turnaround_hours: h }).eq('id', tat.id)); toast('Saved'); setTat(null); master.reload() } catch (e) { toast(e.message) }
+    const c = tat.cost === '' ? 0 : Number(tat.cost)
+    if (!(c >= 0)) return toast('Enter a valid buying price')
+    try { await query(supabase.from('services').update({ turnaround_hours: h, cost_price: c }).eq('id', tat.id)); toast('Saved'); setTat(null); master.reload() } catch (e) { toast(e.message) }
   }
 
   const createTest = async () => {
@@ -182,10 +184,12 @@ export function TestsAndPrices() {
     }
     const hours = n.tat === '' ? null : Number(n.tat)
     if (hours !== null && !(hours > 0)) return toast('Turnaround must be a number of hours')
+    const cost = n.cost === '' ? 0 : Number(n.cost)
+    if (!(cost >= 0)) return toast('Enter a valid buying price')
     setBusy(true)
     try {
       const s = await query(supabase.from('services').insert({
-        category_id: Number(n.kind), name: n.name.trim(), price: 0, is_active: true, patient_bookable: false,
+        category_id: Number(n.kind), name: n.name.trim(), price: 0, cost_price: cost, is_active: true, patient_bookable: false,
         lab_category: isLab ? n.lab_category : null, sample_type: isLab ? n.sample_type.trim() || null : null, turnaround_hours: hours,
         appointment_required: true, submission_methods: isLab && n.remote ? ['visit', 'remote'] : ['visit'],
         preparation_instructions: n.prep.trim() || null, description: n.desc.trim() || null,
@@ -220,7 +224,7 @@ export function TestsAndPrices() {
           <Loader loading={master.loading || rows.loading} error={master.error || rows.error} reload={() => { master.reload(); rows.reload() }} />
           {master.data && (
             <>
-              <p className="muted">{offeredCount} offered at this branch{isAdmin && tab === 'All' ? '. Tick a test and enter your price for this branch.' : '.'}</p>
+              <p className="muted">{offeredCount} offered at this branch{isAdmin && tab === 'All' ? '. Tick a test and enter your price for this branch.' : '.'}{isAdmin ? ' Tap a test name to set its turnaround and buying price.' : ''}</p>
               {list.length ? (
                 <div className="list">
                   {list.map((s) => {
@@ -228,9 +232,9 @@ export function TestsAndPrices() {
                     return (
                       <div className="cart-row" key={s.id}>
                         {isAdmin && <input type="checkbox" checked={e.on} onChange={() => toggle(s)} aria-label={`Offer ${s.name}`} />}
-                        <div className="row-main" onClick={() => isAdmin && setTat({ id: s.id, name: s.name, hours: s.turnaround_hours ?? '' })}>
+                        <div className="row-main" onClick={() => isAdmin && setTat({ id: s.id, name: s.name, hours: s.turnaround_hours ?? '', cost: s.cost_price ? String(s.cost_price) : '' })}>
                           <div className="row-title">{s.name}</div>
-                          <div className="row-sub">{label(s)}{s.turnaround_hours ? ` · ${s.turnaround_hours}h` : ''}</div>
+                          <div className="row-sub">{label(s)}{s.turnaround_hours ? ` · ${s.turnaround_hours}h` : ''}{isAdmin ? ` · Buying ${naira(s.cost_price)}` : ''}</div>
                         </div>
                         {isAdmin ? <input className="input" style={{ width: 110 }} type="number" min="0" inputMode="decimal" placeholder="Price ₦" value={e.price} onChange={(ev) => setPrice(s, ev.target.value)} /> : <b>{naira(e.price)}</b>}
                       </div>
@@ -258,6 +262,9 @@ export function TestsAndPrices() {
       </Sheet>
       <Sheet open={!!tat} title={tat?.name || ''} onClose={() => setTat(null)}>
         <div className="form">
+          <label>Buying price (₦) — what this test costs you</label>
+          <input className="input" type="number" min="0" inputMode="decimal" value={tat?.cost ?? ''} onChange={(e) => setTat({ ...tat, cost: e.target.value })} />
+          <p className="muted">Profit is the selling price minus this buying price.</p>
           <label>Turnaround time (hours)</label>
           <input className="input" type="number" min="1" value={tat?.hours ?? ''} onChange={(e) => setTat({ ...tat, hours: e.target.value })} />
           <p className="muted">Used to set each result's due time. Leave blank if you do not promise one.</p>
@@ -270,6 +277,7 @@ export function TestsAndPrices() {
           <select className="input" value={n.kind} onChange={(e) => setN({ ...n, kind: e.target.value })}><option value="3">Laboratory test</option><option value="2">Scan / imaging</option><option value="1">Consultation</option><option value="4">Other service</option></select>
           <label>Name *</label><input className="input" value={n.name} onChange={(e) => setN({ ...n, name: e.target.value })} />
           <label>Description (optional)</label><input className="input" value={n.desc} onChange={(e) => setN({ ...n, desc: e.target.value })} />
+          <label>Buying price (₦) — what it costs you</label><input className="input" type="number" min="0" inputMode="decimal" value={n.cost} onChange={(e) => setN({ ...n, cost: e.target.value })} />
           <label>Turnaround (hours, optional)</label><input className="input" type="number" min="1" value={n.tat} onChange={(e) => setN({ ...n, tat: e.target.value })} />
           <label>Preparation for the patient (optional)</label><input className="input" value={n.prep} onChange={(e) => setN({ ...n, prep: e.target.value })} />
           {n.kind === '3' && (<>
