@@ -1,10 +1,71 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CheckCircle2, Circle } from 'lucide-react'
 import { useAuth } from '../auth'
 import { supabase, rpc, query } from '../supabase'
-import { useLoad, Loader, LogoMark, naira, todayLagos } from '../ui'
+import { useLoad, Loader, LogoMark, Segmented, naira, fmtDate, todayLagos } from '../ui'
 import { SShell } from './common'
 import { MODULES } from './modules'
+
+const money = (n) => (Number(n) < 0 ? '-' : '') + naira(Math.abs(Number(n) || 0))
+const tone = (n) => ({ color: n > 0 ? '#067647' : n < 0 ? '#b42318' : undefined })
+const resultLabel = (r) => (r === 'profit' ? 'Profit' : r === 'loss' ? 'Loss' : 'Break-even')
+const resultClass = (r) => (r === 'profit' ? 'ok' : r === 'loss' ? 'bad' : 'info')
+const daysAgo = (n) => new Date(new Date(`${todayLagos()}T12:00:00Z`).getTime() - n * 86400000).toISOString().slice(0, 10)
+const monthsAgo = (n) => {
+  const [y, m] = todayLagos().slice(0, 7).split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1 - n, 1)).toISOString().slice(0, 10)
+}
+const monthLabel = (s) => new Date(`${s}T12:00:00Z`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' })
+
+function ProfitCard() {
+  const navigate = useNavigate()
+  const [view, setView] = useState('Daily')
+  const sum = useLoad(() => rpc('profit_summary'), [])
+  const rows = useLoad(() => (view === 'Daily'
+    ? rpc('profit_loss_daily', { p_from: daysAgo(6), p_to: todayLagos() })
+    : rpc('profit_loss_monthly', { p_from: monthsAgo(5), p_to: todayLagos() })), [view])
+  const list = [...(rows.data || [])].reverse()
+  return (
+    <div className="card">
+      <div className="card-title">Profit / Loss</div>
+      <Loader loading={sum.loading} error={sum.error} reload={sum.reload} />
+      {sum.data && (
+        <div className="pl-two">
+          {[["Today's profit", sum.data.today], ['This month', sum.data.this_month]].map(([label, r]) => (
+            <div className="pl-box" key={label}>
+              <span className="muted">{label}</span>
+              <b style={tone(r.net_profit)}>{money(r.net_profit)}</b>
+              <span className={`pill ${resultClass(r.result)}`}>{resultLabel(r.result)}</span>
+              <small>Revenue {naira(r.total_revenue)} · Costs {naira(Number(r.product_cost) + Number(r.expenses))}</small>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{ marginTop: 12 }}><Segmented options={['Daily', 'Monthly']} value={view} onChange={setView} /></div>
+      <p className="muted center">{view === 'Daily' ? 'Last 7 days' : 'Last 6 months'}</p>
+      <Loader loading={rows.loading} error={rows.error} reload={rows.reload} />
+      {rows.data && (
+        <div className="pl-wrap">
+          <table className="pl-table">
+            <thead><tr><th>{view === 'Daily' ? 'Date' : 'Month'}</th><th>Revenue</th><th>Costs</th><th>Profit / Loss</th></tr></thead>
+            <tbody>
+              {list.map((r) => (
+                <tr key={r.from}>
+                  <td>{view === 'Daily' ? fmtDate(`${r.from}T12:00:00Z`) : monthLabel(r.from)}</td>
+                  <td>{naira(r.total_revenue)}</td>
+                  <td>{naira(Number(r.product_cost) + Number(r.expenses))}</td>
+                  <td style={tone(r.net_profit)}><b>{money(r.net_profit)}</b><div className="pl-tag">{resultLabel(r.result)}</div></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <button type="button" className="btn btn-outline" style={{ marginTop: 10 }} onClick={() => navigate('/reports')}>Full profit &amp; loss report</button>
+    </div>
+  )
+}
 
 export function AdminDashboard() {
   const navigate = useNavigate()
@@ -50,6 +111,7 @@ export function AdminDashboard() {
   return (
     <SShell title="Admin" back={false} right={<LogoMark size={28} />}>
       <div className="welcome"><h2>Hello, {(profile.full_name || profile.email || '').split(' ')[0]}</h2><p>Administrator</p></div>
+      <ProfitCard />
       <Loader loading={branches.loading || staff.loading} error={branches.error || staff.error} reload={() => { branches.reload(); staff.reload() }} />
       {ready && (
         <div className="card">
