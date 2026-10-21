@@ -60,7 +60,7 @@ function ProfitGlance() {
               <span className="muted">{label}</span>
               <b style={tone(r.net_profit)}>{money(r.net_profit)}</b>
               <span className={`pill ${resultClass(r.result)}`}>{resultLabel(r.result)}</span>
-              <small>Revenue {naira(r.total_revenue)} · Costs {naira(Number(r.product_cost) + Number(r.expenses))}</small>
+              <small>Selling {naira(r.total_revenue)} · Buying {naira(r.total_cost)}</small>
             </div>
           ))}
         </div>
