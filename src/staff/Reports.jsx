@@ -1,15 +1,12 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Download, Printer } from 'lucide-react'
 import { rpc } from '../supabase'
-import { useLoad, Loader, Segmented, Kv, naira, fmtDate, todayLagos } from '../ui'
+import { useLoad, Loader, Segmented, naira, todayLagos } from '../ui'
 import { SShell, useRole } from './common'
 
-const ROWS = [['total_patients', 'Patients registered'], ['new_patients', 'New patients'], ['returning_patients', 'Returning patients'], ['laboratory_services', 'Lab tests billed'], ['laboratory_revenue', 'Lab revenue', 1], ['products_sold', 'Products sold'], ['service_revenue', 'Service revenue', 1], ['product_revenue', 'Product revenue', 1], ['total_revenue', 'Total revenue', 1], ['outstanding_balance', 'Outstanding balance', 1], ['voided_bills', 'Voided bills'], ['voided_sales', 'Voided sales'], ['product_cost', 'Cost of products sold', 1], ['expenses', 'Expenses', 1], ['net_profit', 'Net profit', 1]]
+const ROWS = [['total_patients', 'Patients registered'], ['new_patients', 'New patients'], ['returning_patients', 'Returning patients'], ['laboratory_services', 'Lab tests billed'], ['laboratory_revenue', 'Lab revenue', 1], ['products_sold', 'Products sold'], ['service_revenue', 'Service revenue', 1], ['product_revenue', 'Product revenue', 1], ['total_revenue', 'Total revenue', 1], ['outstanding_balance', 'Outstanding balance', 1], ['voided_bills', 'Voided bills'], ['voided_sales', 'Voided sales'], ['total_cost', 'Buying price of items sold', 1], ['net_profit', 'Profit (selling − buying)', 1], ['expenses', 'Expenses (not deducted)', 1]]
 const fmt = (v, money) => (money ? naira(v) : Number(v ?? 0).toLocaleString('en-NG'))
-const money = (n) => (Number(n) < 0 ? '-' : '') + naira(Math.abs(Number(n) || 0))
-const tone = (n) => ({ color: n > 0 ? '#067647' : n < 0 ? '#b42318' : undefined })
-const resultLabel = (r) => (r === 'profit' ? 'Profit' : r === 'loss' ? 'Loss' : 'Break-even')
-const resultClass = (r) => (r === 'profit' ? 'ok' : r === 'loss' ? 'bad' : 'info')
 
 function downloadCsv(name, rows) {
   const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
@@ -68,92 +65,9 @@ function Top({ title, rows, value, money: isMoney }) {
 }
 
 const monthStart = () => `${todayLagos().slice(0, 8)}01`
-const monthsBack = (n) => {
-  const [y, m] = todayLagos().slice(0, 7).split('-').map(Number)
-  return new Date(Date.UTC(y, m - 1 - n, 1)).toISOString().slice(0, 10)
-}
-const monthLabel = (s) => new Date(`${s}T12:00:00Z`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' })
-
-function PLCard({ title, r }) {
-  return (
-    <div className="card">
-      <div className="card-title">{title}</div>
-      <div className="center" style={{ margin: '6px 0 12px' }}>
-        <div style={{ fontSize: 26, fontWeight: 700, ...tone(r.net_profit) }}>{money(r.net_profit)}</div>
-        <span className={`pill ${resultClass(r.result)}`}>{resultLabel(r.result)}</span>
-      </div>
-      <Kv k="Service revenue" v={naira(r.service_revenue)} />
-      <Kv k="Product revenue" v={naira(r.product_revenue)} />
-      <Kv k="Total revenue" v={naira(r.total_revenue)} />
-      <Kv k="Cost of products sold" v={naira(r.product_cost)} />
-      <Kv k="Gross profit" v={money(r.gross_profit)} />
-      <Kv k="Expenses" v={naira(r.expenses)} />
-      <Kv k="Net profit / loss" v={money(r.net_profit)} />
-    </div>
-  )
-}
-
-function ProfitLoss() {
-  const [view, setView] = useState('Daily')
-  const [from, setFrom] = useState(monthStart())
-  const [to, setTo] = useState(todayLagos())
-  const sum = useLoad(() => rpc('profit_summary'), [])
-  const rows = useLoad(() => (view === 'Daily'
-    ? rpc('profit_loss_daily', { p_from: from, p_to: to })
-    : rpc('profit_loss_monthly', { p_from: monthsBack(11), p_to: todayLagos() })), [view, from, to])
-  const list = [...(rows.data || [])].reverse()
-  const label = (r) => (view === 'Daily' ? fmtDate(`${r.from}T12:00:00Z`) : monthLabel(r.from))
-  const totals = list.reduce((t, r) => ({
-    total_revenue: t.total_revenue + Number(r.total_revenue), product_cost: t.product_cost + Number(r.product_cost),
-    expenses: t.expenses + Number(r.expenses), net_profit: t.net_profit + Number(r.net_profit),
-  }), { total_revenue: 0, product_cost: 0, expenses: 0, net_profit: 0 })
-  return (
-    <>
-      <Loader loading={sum.loading} error={sum.error} reload={sum.reload} />
-      {sum.data && (<>
-        <PLCard title={`Today · ${fmtDate(`${sum.data.today.from}T12:00:00Z`)}`} r={sum.data.today} />
-        <PLCard title={`This month · ${monthLabel(sum.data.this_month.from)}`} r={sum.data.this_month} />
-      </>)}
-      <div className="no-print"><Segmented options={['Daily', 'Monthly']} value={view} onChange={setView} /></div>
-      {view === 'Daily' && (
-        <div className="two no-print"><input className="input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /><input className="input" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
-      )}
-      {view === 'Monthly' && <p className="muted center">Last 12 months</p>}
-      <Loader loading={rows.loading} error={rows.error} reload={rows.reload} />
-      {rows.data && (list.length ? (
-        <>
-          <div className="card" style={{ padding: 0 }}>
-            <div className="pl-wrap">
-              <table className="pl-table">
-                <thead><tr><th>{view === 'Daily' ? 'Date' : 'Month'}</th><th>Revenue</th><th>Cost</th><th>Expenses</th><th>Profit / Loss</th></tr></thead>
-                <tbody>
-                  {list.map((r) => (
-                    <tr key={r.from}>
-                      <td>{label(r)}</td>
-                      <td>{naira(r.total_revenue)}</td>
-                      <td>{naira(r.product_cost)}</td>
-                      <td>{naira(r.expenses)}</td>
-                      <td style={tone(r.net_profit)}><b>{money(r.net_profit)}</b><div className="pl-tag">{resultLabel(r.result)}</div></td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr><td>Total</td><td>{naira(totals.total_revenue)}</td><td>{naira(totals.product_cost)}</td><td>{naira(totals.expenses)}</td><td style={tone(totals.net_profit)}><b>{money(totals.net_profit)}</b></td></tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
-          <div className="btn-row no-print">
-            <button type="button" className="btn btn-outline" onClick={() => window.print()}><Printer size={16} /> Print</button>
-            <button type="button" className="btn btn-outline" onClick={() => downloadCsv(`profit-loss-${view.toLowerCase()}.csv`, [[view === 'Daily' ? 'Date' : 'Month', 'Service revenue', 'Product revenue', 'Total revenue', 'Product cost', 'Expenses', 'Net profit/loss', 'Result'], ...list.map((r) => [r.from, r.service_revenue, r.product_revenue, r.total_revenue, r.product_cost, r.expenses, r.net_profit, resultLabel(r.result)])])}><Download size={16} /> CSV</button>
-          </div>
-        </>
-      ) : <div className="empty">No data for this period.</div>)}
-    </>
-  )
-}
 
 export function Reports() {
+  const navigate = useNavigate()
   const { isAdmin } = useRole()
   const [tab, setTab] = useState('Daily')
   const [date, setDate] = useState(todayLagos())
@@ -168,7 +82,7 @@ export function Reports() {
   )
   return (
     <SShell title="Reports & Analytics" back={false}>
-      <div className="no-print"><Segmented options={isAdmin ? ['Daily', 'Total', 'Analytics', 'Profit/Loss'] : ['Daily', 'Total', 'Analytics']} value={tab} onChange={setTab} /></div>
+      <div className="no-print"><Segmented options={isAdmin ? ['Daily', 'Total', 'Analytics', 'Profit/Loss'] : ['Daily', 'Total', 'Analytics']} value={tab} onChange={(t) => (t === 'Profit/Loss' ? navigate('/profit') : setTab(t))} /></div>
       {tab === 'Daily' && (<>
         <input className="input no-print" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         <Loader loading={daily.loading} error={daily.error} reload={daily.reload} />
@@ -179,7 +93,6 @@ export function Reports() {
         <Loader loading={range.loading} error={range.error} reload={range.reload} />
         {range.data && <Summary r={range.data} title="Total Report" />}
       </>)}
-      {tab === 'Profit/Loss' && isAdmin && <ProfitLoss />}
       {tab === 'Analytics' && (<>
         {dates}
         <select className="input" value={bucket} onChange={(e) => setBucket(e.target.value)}><option value="day">By day</option><option value="week">By week</option><option value="month">By month</option></select>
